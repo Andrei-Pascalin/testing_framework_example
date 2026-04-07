@@ -1,16 +1,11 @@
 from flask import Flask, request, jsonify, render_template_string
 from datetime import datetime
-import logging
+from utils.my_logger import get_logger
+
+log = get_logger()
 
 # Initialize Flask application
 app = Flask(__name__)
-
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
 
 # Store results in memory (can be replaced with database)
 results_store = []
@@ -61,8 +56,8 @@ def receive_result():
 
         # Log the received result
         status = "✅  SUCCESS" if data["success"] else "❌  FAILED"
-        logger.info(f"Received result: {data['test_name']} | {status}")
-        logger.debug(f"Full payload: {result_record}")
+        log.info(f"Received result: {data['test_name']} | {status}")
+        log.debug(f"Full payload: {result_record}")
 
         return jsonify({
             "message": "Result received and stored successfully.",
@@ -71,7 +66,7 @@ def receive_result():
         }), 200
 
     except Exception as e:
-        logger.error(f"Error processing result: {str(e)}")
+        log.error(f"Error processing result: {str(e)}")
         return jsonify({
             "error": str(e),
             "status": "FAILED"
@@ -319,7 +314,7 @@ def show_results_dashboard():
         )
         
     except Exception as e:
-        logger.error(f"Error rendering dashboard: {str(e)}")
+        log.error(f"Error rendering dashboard: {str(e)}")
         return jsonify({
             "error": str(e),
             "status": "FAILED"
@@ -337,14 +332,14 @@ def not_found(error):
 @app.errorhandler(500)
 def internal_error(error):
     """Handle 500 errors."""
-    logger.error(f"Internal server error: {str(error)}")
+    log.error(f"Internal server error: {str(error)}")
     return jsonify({
         "error": "Internal server error",
         "status": "FAILED"
     }), 500
 
 if __name__ == '__main__':
-    logger.info("Starting Flask Results Server on localhost:8200")
+    log.info("Starting Flask Results Server on localhost:8200")
     app.run(
         host='localhost',
         port=8200,

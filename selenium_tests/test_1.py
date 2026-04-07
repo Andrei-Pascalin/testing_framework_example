@@ -4,6 +4,9 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from pathlib import Path
 from utils.test_results_sender import SendingManager
+from utils.my_logger import get_logger
+
+log = get_logger()
 
 msg_manager = SendingManager()
 
@@ -43,9 +46,9 @@ try:
         result_state = False
         result_msg += "❌ NOT FOUND: 'Email: rustic_handmade@gmx.com'\n"
 
-    print("=== CONTACT PAGE TEXT ===")
-    print(text)
-    print("=== END CONTACT PAGE TEXT ===")
+    log.info("=== CONTACT PAGE TEXT ===")
+    log.info(text)
+    log.info("=== END CONTACT PAGE TEXT ===")
 
 finally:
     driver.quit()

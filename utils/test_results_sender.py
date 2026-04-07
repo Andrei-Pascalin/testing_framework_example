@@ -1,4 +1,7 @@
 import requests
+from utils.my_logger import get_logger
+
+log = get_logger()
 
 SERVER_URL = "http://127.0.0.1:8100/result"
 
@@ -28,7 +31,7 @@ class TestResultSender:
             "text": text
         }
 
-        # print("Sending data to server:", data)
+        # log.info("Sending data to server:", data)
         response = requests.post(self.url, json=data)
         return response.json()
 
