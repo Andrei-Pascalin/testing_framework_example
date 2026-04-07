@@ -9,6 +9,10 @@ import psutil
 from pathlib import Path
 from typing import List, Dict
 
+# for not creating pyc files...
+sys.dont_write_bytecode = True
+
+
 TEST_PATTERN = re.compile(r"^test_(\d+)(.*?)\.py$")
 TEST_DIR_NAME = "selenium_tests"
 # asta e varianta mai traditionala de a afla CWD
@@ -74,7 +78,7 @@ class Runner:
             self.__terminate_process(existing_process)
         print("No existing results page running so starting a new one.")
         # Start new server
-        self.results_page_srv_process = subprocess.Popen([sys.executable, "print_results_page_srv.py"],
+        self.results_page_srv_process = subprocess.Popen([sys.executable, "-B", "print_results_page_srv.py"],
                                                         cwd="show_results_srv",
                                                         stdout=subprocess.PIPE,
                                                         stderr=subprocess.PIPE,
@@ -92,7 +96,7 @@ class Runner:
         # si optional le va salva intr-o baza de date si le vaforwarda catre un alt server care 
         # le va afisa intr-o pagina web, adica flask_srv_process
         
-        self.db_results_srv_process = subprocess.Popen([sys.executable, "-m", "uvicorn",
+        self.db_results_srv_process = subprocess.Popen([sys.executable, "-B", "-m", "uvicorn",
                                                         "fastApi_SRV_Selenium_results:app",
                                                         "--host", "127.0.0.1", "--port", "8100"],
                                                         cwd="results_SRV")
@@ -118,7 +122,7 @@ class Runner:
             if self.must_exit:
                 print("Exiting test run loop due to signal interrupt.")
                 raise KeyboardInterrupt()
-            test_proc = subprocess.Popen([sys.executable,
+            test_proc = subprocess.Popen([sys.executable, "-B",
                                           "-m",
                                           "selenium_tests." + test.get(r"test_name")],
                                           cwd=CURRENT_PATH)
