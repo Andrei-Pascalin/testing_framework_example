@@ -8,6 +8,10 @@ import psutil
 
 from pathlib import Path
 from typing import List, Dict
+from utils.my_logger import get_logger
+
+log = get_logger()
+
 
 # for not creating pyc files...
 sys.dont_write_bytecode = True
@@ -58,7 +62,8 @@ class Runner:
         for p in psutil.process_iter():
             try:
                 if "print_results_page_srv.py" in p.cmdline():
-                    print(p.name(), p.pid, p.status(), p.cmdline())
+                    log.info("Found existing results page server process: %s (PID: %d, Status: %s)",
+                             p.name(), p.pid, p.status())
                     return p
             except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
                 continue
@@ -68,25 +73,25 @@ class Runner:
         existing_process = self.__get_results_page_srv_process()
         if existing_process:
             if not self.restart_results_page_srv:
-                print(f"Existing results page server already running (PID: {existing_process.pid})"
+                log.info(f"Existing results page server already running (PID: {existing_process.pid})"
                       "skipping start and no restart requested.")
                 self.results_page_srv_process = existing_process
                 return
 
-            print("Restarting results page server as per CLI argument...")
-            print(f"Terminating existing results page server (PID: {existing_process.pid})...")
+            log.info("Restarting results page server as per CLI argument...")
+            log.info(f"Terminating existing results page server (PID: {existing_process.pid})...")
             self.__terminate_process(existing_process)
-        print("No existing results page running so starting a new one.")
+        log.info("No existing results page running so starting a new one.")
         # Start new server
         self.results_page_srv_process = subprocess.Popen([sys.executable, "-B", "print_results_page_srv.py"],
                                                         cwd="show_results_srv",
                                                         stdout=subprocess.PIPE,
                                                         stderr=subprocess.PIPE,
                                                         start_new_session=True)
-        print(f"Started (Flask) results page server (PID: {self.results_page_srv_process.pid})")
+        log.info(f"Started (Flask) results page server (PID: {self.results_page_srv_process.pid})")
 
     def __sigIntTerm_handler(self, signum, frame):
-        print(f"Received signal {signum}, initiating cleanup...")
+        log.info(f"Received signal {signum}, initiating cleanup...")
         self.must_exit = True 
         # self.cleanup_servers()
         
@@ -97,21 +102,21 @@ class Runner:
         # le va afisa intr-o pagina web, adica flask_srv_process
         
         self.db_results_srv_process = subprocess.Popen([sys.executable, "-B", "-m", "uvicorn",
-                                                        "fastApi_SRV_Selenium_results:app",
+                                                        "results_SRV.fastApi_SRV_Selenium_results:app",
                                                         "--host", "127.0.0.1", "--port", "8100"],
-                                                        cwd="results_SRV")
+                                                        cwd=str(CURRENT_PATH))
 
         time.sleep(3)
-        print("am pornit procesul srv-ului de asteptare a datelor de la teste ...")
+        log.info("Am pornit procesul srv-ului de asteptare a datelor de la teste ...")
 
         self.__start_results_page_srv()
 
         
     def run_tests(self):
         self.tests = self.__find_selenium_tests()
-        print(self.tests)
+        log.debug(self.tests)
         if len(self.tests) == 0:
-            print("Nu avem teste, hopaaaa, hai sa esim... :) ")
+            log.error("Nu avem teste, hopaaaa, hai sa esim... :) ")
             raise Exception("Nu avem teste, hopaaaa, hai sa esim... :) ")
 
         # TODO need to find a better way to send the cwd to the subprocesses, maybe we can use env variables ...
@@ -120,7 +125,7 @@ class Runner:
             # should I check here if we should gracefully kill the test ?
             # in case sigterm happens ?
             if self.must_exit:
-                print("Exiting test run loop due to signal interrupt.")
+                log.info("Exiting test run loop due to signal interrupt.")
                 raise KeyboardInterrupt()
             test_proc = subprocess.Popen([sys.executable, "-B",
                                           "-m",
@@ -130,27 +135,28 @@ class Runner:
     
     # this is how we elegantly terminate a process (at least linux style)
     def __terminate_process(self, process: psutil.Process, timeout=5):
+        # TODO check for zombie ??? 
         proc_str_msg = f"{process.name()} - {process.cmdline()} (PID: {process.pid})"
-        print(f"Terminating existing {proc_str_msg}...")
+        log.info(f"Terminating existing {proc_str_msg}...")
         try:
             process.terminate()
             process.wait(timeout=timeout)
-            print(f"Existing {proc_str_msg} terminated.")
+            log.info(f"Existing {proc_str_msg} terminated.")
         except subprocess.TimeoutExpired:
-            print("Graceful terminate timed out; killing process...")
+            log.error("Graceful terminate timed out; killing process...")
             try:
                 # kill raises NoSUchProcess
                 process.kill()
                 process.wait(timeout=timeout)
             except psutil.NoSuchProcess:
-                 print(f"Process {process.pid} already terminated.")
+                 log.error(f"Process {process.pid} already terminated.")
             except subprocess.TimeoutExpired:
-                print(f"Failed to kill process {process.pid} within timeout.")
+                log.error(f"Failed to kill process {process.pid} within timeout.")
             except Exception as e:
-                print(f"Failed to kill existing process: {e}")
+                log.error(f"Failed to kill existing process: {e}")
         except Exception as e:
-            print(f"Error while stopping existing process: {e}")
-        
+            log.error(f"Error while stopping existing process: {e}")
+
     def cleanup_servers(self):
         # TODO add better logic, handle timeout and force terminate cases, 
         # also handle the case when the server is already stopped by the user or by an error in 
@@ -169,11 +175,11 @@ class Runner:
             self.start_servers()
             self.run_tests()
         except KeyboardInterrupt:
-            print("Test run interrupted by user.")
+            log.error("Test run interrupted by user.")
             # sigint exit code
             return 130
         except Exception as e:
-            print(f"Error during test execution: {e}" )
+            log.error(f"Error during test execution: {e}")
             return 1
         finally:
             self.cleanup_servers()
