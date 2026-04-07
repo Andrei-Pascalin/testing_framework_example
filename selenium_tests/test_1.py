@@ -8,6 +8,9 @@ from utils.test_results_sender import SendingManager
 msg_manager = SendingManager()
 
 driver = webdriver.Chrome()
+# driver = webdriver.ChromiumEdge()
+# options = webdriver.FirefoxOptions()
+# driver = webdriver.Firefox(options=options)
 
 result_state = False
 result_msg = ""

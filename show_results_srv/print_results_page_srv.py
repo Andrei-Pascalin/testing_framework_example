@@ -262,7 +262,7 @@ def show_results_dashboard():
                         </div>
                         {% if total_tests > 0 %}
                             <div class="stat-box">
-                                <h3> style="color: #667eea;">{{ pass_rate }}%</h3>
+                                <h3 style="color: #667eea;">{{ pass_rate }}%</h3>
                                 <p>Pass Rate</p>
                             </div>
                         {% endif %}
@@ -272,10 +272,10 @@ def show_results_dashboard():
                     {% if results %}
                     <h2 style="margin-bottom: 20px; color: #333;">Test Results</h2>
                     {% for result in results %}
-                    <div class="result-item {{ %if result.success %}success{% else %}failed{% endif %}">
+                    <div class="result-item {% if result.success %}success{% else %}failed{% endif %}">
                         <div class="result-header">
                             <span class="result-name">#{{ loop.index }}. {{ result.test_name }}</span>
-                            <span class="result-status {{ % if result.success %}success{% else %}failed{% endif %} ">   
+                            <span class="result-status {% if result.success %}success{% else %}failed{% endif %}">   
                                 {% if result.success %}
                                     ✅ SUCCESS
                                 {% else %}
