@@ -1,14 +1,21 @@
 from flask import Flask, request, jsonify, render_template_string
-from datetime import datetime
 from utils.my_logger import get_logger
 
-log = get_logger()
+log = get_logger(log_filename="results_server_webpage_FLASK.log")
 
 # Initialize Flask application
 app = Flask(__name__)
 
 # Store results in memory (can be replaced with database)
 results_store = []
+
+@app.route('/alive', methods=['GET'])
+def check_alive():
+    """Health check endpoint to verify server is running."""
+    return jsonify({
+        "message": "FLASK Server is alive",
+        "status": "SUCCESS"
+    }), 200
 
 @app.route('/result', methods=['POST'])
 def receive_result():
@@ -17,10 +24,10 @@ def receive_result():
     Expected JSON payload:
     {
         "test_name": "str",
-        ... 
+        ...
     }
     """
- 
+    log.debug("====>(FLASK) Received POST request to /result endpoint")
     try:
         # Validate request has JSON content
         if not request.is_json:
@@ -31,9 +38,10 @@ def receive_result():
 
         # Get JSON data
         data = request.get_json()
+        log.debug("Received POST request to /result endpoint with data: %s", data)
 
         # Validate required fields
-        required_fields = ['test_name', 'success', 'text']
+        required_fields = ['test_name', 'success', 'text', 'start_time', 'runtime']
         missing_fields = [field for field in required_fields if field not in data]
 
         if missing_fields:
@@ -42,22 +50,23 @@ def receive_result():
                 "status": "FAILED"
             }), 400
 
-        # Create result record with timestamp
+        # Create result record with start_time and runtime if provided
         result_record = {
-            "timestamp": datetime.now().isoformat(),
             "test_name": data.get("test_name"),
             "success": data.get("success"),
-            "text": data.get("text")
+            "text": data.get("text"),
+            "start_time": data.get("start_time"),
+            "runtime": data.get("runtime")
         }
 
         # Store result
         results_store.append(result_record)
-        
+
 
         # Log the received result
-        status = "✅  SUCCESS" if data["success"] else "❌  FAILED"
-        log.info(f"Received result: {data['test_name']} | {status}")
-        log.debug(f"Full payload: {result_record}")
+        # status = "✅  SUCCESS" if data["success"] else "❌  FAILED"
+        # log.info(f"==============> Received result: {data['test_name']} | {status}")
+        # log.info(f"==============> Full payload: {result_record}")
 
         return jsonify({
             "message": "Result received and stored successfully.",
@@ -142,7 +151,7 @@ def show_results_dashboard():
                     color: #667eea;
                     font-size: 18px;
                 }
-                
+
                 .results-container {
                     background: white;
                     padding: 20px;
@@ -157,7 +166,7 @@ def show_results_dashboard():
                     border-radius: 5px;
                     transition: all 0.3s ease;
                 }
-                
+
                 .result-item.hover {
                     background: #f0f0f0;
                     box-shadow: 0 2px 5px rgba(0,0,0,0.1);
@@ -195,7 +204,12 @@ def show_results_dashboard():
                     background: #f44336;
                     color: white;
                 }
-                .result-timestamp {
+                .result-start_time {
+                    color: #999;
+                    font-size: 12px;
+                    margin-bottom: 10px;
+                }
+                .result-runtime {
                     color: #999;
                     font-size: 12px;
                     margin-bottom: 10px;
@@ -270,7 +284,7 @@ def show_results_dashboard():
                     <div class="result-item {% if result.success %}success{% else %}failed{% endif %}">
                         <div class="result-header">
                             <span class="result-name">#{{ loop.index }}. {{ result.test_name }}</span>
-                            <span class="result-status {% if result.success %}success{% else %}failed{% endif %}">   
+                            <span class="result-status {% if result.success %}success{% else %}failed{% endif %}">
                                 {% if result.success %}
                                     ✅ SUCCESS
                                 {% else %}
@@ -278,7 +292,8 @@ def show_results_dashboard():
                                 {% endif %}
                             </span>
                         </div>
-                        <div class="result-timestamp">{{ result.timestamp }}</div>
+                        <div class="result-start_time">{{ result.start_time }}</div>
+                        <div class="result-runtime">{{ result.runtime }}</div>
                         <div class="result-text">{{ result.text }}</div>
                     </div>
                     {% endfor %}
@@ -290,7 +305,7 @@ def show_results_dashboard():
                     </div>
                 {% endif %}
             </div>
-            
+
             <div style="text-align: center; margin-top: 30px;">
                 <button class="refresh-btn" onclick="location.reload()">  --Refresh--  </button>
             </div>
@@ -312,15 +327,15 @@ def show_results_dashboard():
             failed_tests=failed_tests,
             pass_rate=pass_rate
         )
-        
+
     except Exception as e:
         log.error(f"Error rendering dashboard: {str(e)}")
         return jsonify({
             "error": str(e),
             "status": "FAILED"
-        }), 500 
-        
-        
+        }), 500
+
+
 @app.errorhandler(404)
 def not_found(error):
     """Handle 404 errors."""
@@ -346,15 +361,14 @@ if __name__ == '__main__':
         debug=False,
         threaded=True
     )
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
+
+
+
+
+
+
+
+
+
+
+
