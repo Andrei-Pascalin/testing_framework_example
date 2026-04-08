@@ -1,55 +1,53 @@
-from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from utils.selenium_test_template import SeleniumTestTemplate, get_runtime
 from pathlib import Path
-from utils.test_results_sender import SendingManager
-from utils.my_logger import get_logger
 
-log = get_logger()
+class Test1(SeleniumTestTemplate):
+    def __init__(self):
+        super().__init__(str(Path(__file__).stem))
 
-msg_manager = SendingManager()
+    def setup(self):
+        pass
 
-driver = webdriver.Chrome()
-# driver = webdriver.ChromiumEdge()
-# options = webdriver.FirefoxOptions()
-# driver = webdriver.Firefox(options=options)
+    @get_runtime
+    def run_test_steps(self):
+        self.driver.get("https://www.rustic-handmade.ro")
+        wait = WebDriverWait(self.driver, 10)
+        contact = wait.until(
+            EC.element_to_be_clickable((By.PARTIAL_LINK_TEXT, "Contact"))
+        )
+        contact.click()
+        contact_text_element = wait.until(
+            EC.presence_of_element_located((By.TAG_NAME, "body"))
+        )
+        # Get all visible text from the page
+        text = contact_text_element.text
+        # text_list = text.splitlines()
+        if "Telefon (Whatsapp):" in text:
+            self.result_success = True
 
-result_state = False
-result_msg = ""
+        if "Telefon (Whatsapp):" in text:
+            self.result_success = True
+            self.result_msg += "✅ FOUND: 'Telefon (Whatsapp)'\n"
+        else:
+            self.result_msg += "❌ NOT FOUND: 'Telefon (Whatsapp)'\n"
 
-try:
-    driver.get("https://www.rustic-handmade.ro")
-    wait = WebDriverWait(driver, 10)
-    contact = wait.until(
-        EC.element_to_be_clickable((By.PARTIAL_LINK_TEXT, "Contact"))
-    )
-    contact.click()
-    contact_text_element = wait.until(
-        EC.presence_of_element_located((By.TAG_NAME, "body"))
-    )
-    # Get all visible text from the page
-    text = contact_text_element.text
-    # text_list = text.splitlines()
-    if "Telefon (Whatsapp):" in text:
-        result_state = True
-        
-    if "Telefon (Whatsapp):" in text:
-        result_state = True
-        result_msg += "✅ FOUND: 'Telefon (Whatsapp)'\n"
-    else:
-        result_msg += "❌ NOT FOUND: 'Telefon (Whatsapp)'\n"
+        if "Email: rustic_handmade@gmx.com" in text:
+            self.result_msg += "✅ FOUND: 'Email: rustic_handmade@gmx.com'\n"
+        else:
+            self.result_success = False
+            self.result_msg += "❌ NOT FOUND: 'Email: rustic_handmade@gmx.com'\n"
 
-    if "Email: rustic_handmade@gmx.com" in text:
-        result_msg += "✅ FOUND: 'Email: rustic_handmade@gmx.com'\n"
-    else:
-        result_state = False
-        result_msg += "❌ NOT FOUND: 'Email: rustic_handmade@gmx.com'\n"
+        self.log.info("=== CONTACT PAGE TEXT ===")
+        self.log.info(text)
+        self.log.info("=== END CONTACT PAGE TEXT ===")
 
-    log.info("=== CONTACT PAGE TEXT ===")
-    log.info(text)
-    log.info("=== END CONTACT PAGE TEXT ===")
+    def teardown(self):
+        pass
 
-finally:
-    driver.quit()
-    msg_manager.send(str(Path(__file__).stem), result_state, result_msg)        
+
+if __name__ == "__main__":
+    Test1().execute()
+

@@ -40,16 +40,14 @@ test_runner.py
 - [x] Test runner with server orchestration
 - [x] Centralized logging system
 - [x] Graceful signal handling and cleanup
-
+- [x] Generic testing class with runtime measurement
 ---
 
 ## 📝 Planned Features
 
-- [ ] Generic testing class with runtime measurement
 - [ ] SQLAlchemy database integration for FastAPI
-- [ ] Separate Flask templates and database queries
-- [ ] Test result filtering and sorting
-- [ ] Performance analytics and trends
+- [ ] Separate Flask and html template
+- [ ] Database queries
 
 ---
 
@@ -97,4 +95,4 @@ Open your browser: `http://localhost:8200/dashboard`
 
 ## 📜 License
 
-See LICENSE file for details. 
+See LICENSE file for details.
