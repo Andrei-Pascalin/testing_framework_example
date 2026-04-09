@@ -10,8 +10,8 @@ An almost complete testing framework showcase featuring Selenium test automation
 
 This project demonstrates:
 - **Selenium test automation** with organized test discovery
-- **FastAPI server** receiving test results in real-time
-- **Flask dashboard** for visualizing test results
+- **FastAPI server** receiving test results in real-time and storing them in a DB
+- **Flask dashboard** for visualizing test results on a web page
 - **Graceful signal handling** (SIGINT/SIGTERM)
 - **Centralized logging** to stdout and file
 - **Process management** with automatic cleanup
@@ -67,7 +67,8 @@ python test_runner.py --stop_results_page_srv
 python test_runner.py --restart_results_page_srv
 ```
 # Note
-the Flask dashboard server will not be terminated by default upon test run end...
+1. the Flask dashboard server will not be terminated by default upon testrun end...
+2. this mini project is for the moment only (or mostly) usable on linux machines since there are some linux specific modules being used (ex: psutil)
 ---
 
 ## 📊 View Results
