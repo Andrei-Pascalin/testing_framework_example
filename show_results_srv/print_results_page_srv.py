@@ -1,10 +1,11 @@
-from flask import Flask, request, jsonify, render_template_string, render_template
+import os
+from flask import Flask, request, jsonify, render_template
 from utils.my_logger import get_logger
 
 log = get_logger(log_filename="results_server_webpage_FLASK.log")
 
-# Initialize Flask application
-app = Flask(__name__)
+# Initialize Flask application with explicit template folder
+app = Flask(__name__, template_folder=os.path.join(os.path.dirname(__file__), 'templates'))
 
 # Store results in memory (can be replaced with database)
 results_store = []
@@ -90,11 +91,11 @@ def show_results_dashboard():
         # below line was the old way of showing of the results page
         # now we use an html template to showcase the results page...
         # hope this works ... :)
-        
+
         # Generate HTML with styles and result data
         # html_template = """
         # """
-        
+
         # Calculate statistics
         total_tests = len(results_store)
         success_tests = sum(1 for r in results_store if r["success"])
@@ -102,7 +103,7 @@ def show_results_dashboard():
         pass_rate = round((success_tests / total_tests) * 100, 2) if total_tests > 0 else 0
 
         # Render HTML with results and statistics
-        return render_template_string(
+        return render_template(
             "dashboard.html",
             results=results_store,
             total_tests=total_tests,
