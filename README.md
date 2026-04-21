@@ -48,7 +48,7 @@ test_runner.py
 
 ## 📝 Planned Features
 
-- [ ] Database queries
+- [ ] Database queries from flask exposed web interface
 
 ---
 
