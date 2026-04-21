@@ -1,10 +1,11 @@
-from flask import Flask, request, jsonify, render_template_string
+import os
+from flask import Flask, request, jsonify, render_template
 from utils.my_logger import get_logger
 
 log = get_logger(log_filename="results_server_webpage_FLASK.log")
 
-# Initialize Flask application
-app = Flask(__name__)
+# Initialize Flask application with explicit template folder
+app = Flask(__name__, template_folder=os.path.join(os.path.dirname(__file__), 'templates'))
 
 # Store results in memory (can be replaced with database)
 results_store = []
@@ -87,231 +88,14 @@ def show_results_dashboard():
     # Display all test results in a dynamically generated HTML page.
 
     try:
+        # below line was the old way of showing of the results page
+        # now we use an html template to showcase the results page...
+        # hope this works ... :)
+
         # Generate HTML with styles and result data
-        html_template = """
-        <!DOCTYPE html>
-        <html lang="en">
-        <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>Test Results Dashboard</title>
-            <style>
-                * {
-                    margin: 0;
-                    padding: 0;
-                    box-sizing: border-box;
-                }
+        # html_template = """
+        # """
 
-                body {
-                    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                    min-height: 100vh;
-                    padding: 20px;
-                }
-
-                .container {
-                    max-width: 1000px;
-                    margin: 0 auto;
-                }
-
-                .header {
-                    background: white;
-                    padding: 30px;
-                    border-radius: 8px 8px 0 0;
-                    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-                    margin-bottom: 0px;
-                }
-                .header h1 {
-                    color: #333;
-                    margin-bottom: 10px;
-                }
-
-                .header p {
-                    color: #678;
-                    font-size: 14px;
-                }
-
-                .stats {
-                    display: flex;
-                    gap: 20px;
-                    margin-top: 20px;
-                    flex-wrap: wrap;
-                }
-
-                .stat-box {
-                    flex: 1;
-                    min-width: 150px;
-                    background: #f5f5f5;
-                    padding: 15px;
-                    border-radius: 5px;
-                    text-align: center;
-                }
-
-                .stat-box h3 {
-                    color: #667eea;
-                    font-size: 18px;
-                }
-
-                .results-container {
-                    background: white;
-                    padding: 20px;
-                    border-radius: 0 0 8px 8px;
-                    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-                }
-                .result-item {
-                    border-left: 4px solid #ddd;
-                    padding: 15px 0;
-                    margin-bottom: 15px;
-                    background: #f9f9f9;
-                    border-radius: 5px;
-                    transition: all 0.3s ease;
-                }
-
-                .result-item.hover {
-                    background: #f0f0f0;
-                    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-                }
-                .result-item.success {
-                    border-left-color: #4caf50;
-                    background: #f1f8f6;
-                }
-                .result-item.failed {
-                    border-left-color: #f44336;
-                    background: #fef5f5;
-                }
-                .result-header {
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                    margin-bottom: 10px;
-                }
-                .result-name {
-                    font-weight: bold;
-                    color: #333;
-                    font-size: 16px;
-                }
-                .result-status {
-                    padding: 5px 10px;
-                    border-radius: 20px;
-                    font-size: 12px;
-                    font-weight: bold;
-                }
-                .result-status.success {
-                    background: #4caf50;
-                    color: white;
-                }
-                .result-status.failed {
-                    background: #f44336;
-                    color: white;
-                }
-                .result-start_time {
-                    color: #999;
-                    font-size: 12px;
-                    margin-bottom: 10px;
-                }
-                .result-runtime {
-                    color: #999;
-                    font-size: 12px;
-                    margin-bottom: 10px;
-                }
-                .result-text {
-                    color: #555;
-                    font-size: 14px;
-                    margin-top: 10px;
-                    padding: 10px;
-                    background: white;
-                    border-radius: 5px;
-                    border-left: 4px solid #667eea;
-                }
-                .empty-state {
-                    text-align: center;
-                    padding: 40px 20px;
-                    color: #999;
-                }
-                .empty-state svg {
-                    width: 80px;
-                    height: 80px;
-                    margin-bottom: 20px;
-                    opacity: 0.5;
-                }
-                .refresh-btn {
-                    display: inline-block;
-                    margin-top: 20px;
-                    padding: 10px 20px;
-                    background: #667eea;
-                    color: white;
-                    border: none;
-                    border-radius: 5px;
-                    cursor: pointer;
-                    font-size: 14px;
-                    transition: background 0.3s ease;
-                }
-                .refresh-btn:hover {
-                    background: #5a67d8;
-                }
-                </style>
-        </head>
-        <body>
-            <div class="container">
-                <div class="header">
-                    <h1>Test Results Dashboard</h1>
-                    <p>Overview of all test results received from remote servers.</p>
-                    <div class="stats">
-                        <div class="stat-box">
-                            <h3>{{ total_tests }}</h3>
-                            <p>Total Tests</p>
-                        </div>
-                        <div class="stat-box">
-                        <h3 style="color: #4caf50;">{{ success_tests }}</h3>
-                            <p>Passed Tests</p>
-                        </div>
-                        <div class="stat-box">
-                            <h3 style="color: #f44336;">{{ failed_tests }}</h3>
-                            <p>Failed Tests</p>
-                        </div>
-                        {% if total_tests > 0 %}
-                            <div class="stat-box">
-                                <h3 style="color: #667eea;">{{ pass_rate }}%</h3>
-                                <p>Pass Rate</p>
-                            </div>
-                        {% endif %}
-                    </div>
-                </div>
-                <div class="results-container">
-                    {% if results %}
-                    <h2 style="margin-bottom: 20px; color: #333;">Test Results</h2>
-                    {% for result in results %}
-                    <div class="result-item {% if result.success %}success{% else %}failed{% endif %}">
-                        <div class="result-header">
-                            <span class="result-name">#{{ loop.index }}. {{ result.test_name }}</span>
-                            <span class="result-status {% if result.success %}success{% else %}failed{% endif %}">
-                                {% if result.success %}
-                                    ✅ SUCCESS
-                                {% else %}
-                                    ❌ FAILED
-                                {% endif %}
-                            </span>
-                        </div>
-                        <div class="result-start_time">{{ result.start_time }}</div>
-                        <div class="result-runtime">{{ result.runtime }}</div>
-                        <div class="result-text">{{ result.text }}</div>
-                    </div>
-                    {% endfor %}
-                {% else %}
-                    <div class="empty-state">
-                        <h2>No Test Results Yet</h2>
-                        <p>Waiting for test results to be received from remote servers.</p>
-                        <p style="font-size: 12px; color: #666;">Tip: Run some tests to see results appear here.</p>
-                    </div>
-                {% endif %}
-            </div>
-
-            <div style="text-align: center; margin-top: 30px;">
-                <button class="refresh-btn" onclick="location.reload()">  --Refresh--  </button>
-            </div>
-        </body>
-        </html>
-        """
         # Calculate statistics
         total_tests = len(results_store)
         success_tests = sum(1 for r in results_store if r["success"])
@@ -319,8 +103,8 @@ def show_results_dashboard():
         pass_rate = round((success_tests / total_tests) * 100, 2) if total_tests > 0 else 0
 
         # Render HTML with results and statistics
-        return render_template_string(
-            html_template,
+        return render_template(
+            "dashboard.html",
             results=results_store,
             total_tests=total_tests,
             success_tests=success_tests,
