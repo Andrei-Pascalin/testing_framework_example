@@ -18,6 +18,38 @@ def check_alive():
         "status": "SUCCESS"
     }), 200
 
+@app.route('/new-result-ping', methods=['POST'])
+def new_result_ping():
+    """
+    Endpoint to receive notification of new results.
+    The info received is actually the db_id of the newly stored result in the database.
+    This is called by the FASTAPI server to notify that a new result has been stored in the database.
+    The Flask server will then get the result for the given db_id from the database and update 
+    the results page accordingly.
+    """
+    """
+    Expected JSON payload:
+    {
+        "db_id": "int"
+    }
+    """
+    log.debug("Received new result ping from FASTAPI server.")
+    try:
+        data = request.get_json()
+        log.debug(f"================>>>> Data received in new_result_ping: {data}")
+        # Here you can implement logic to fetch the latest results from the database if needed
+        # For now, we just acknowledge the ping
+        return jsonify({
+            "message": "New result ping received. You can now fetch the latest results from the database.",
+            "status": "SUCCESS"
+        }), 200
+    except Exception as e:
+        log.error(f"Error processing new result ping: {str(e)}")
+        return jsonify({
+            "error": str(e),
+            "status": "FAILED"
+        }), 500
+
 @app.route('/result', methods=['POST'])
 def receive_result():
     """
