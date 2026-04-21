@@ -62,7 +62,9 @@ class Runner:
     def __get_results_page_srv_process(self):
         for p in psutil.process_iter():
             try:
-                if "print_results_page_srv.py" in p.cmdline():
+                # log.debug(f"Checking process: {p.name()} (PID: {p.pid}, Status: {p.status()}), Cmdline: {p.cmdline()}")
+                contains = lambda lst: any("print_results_page_srv" in s for s in lst)
+                if contains(p.cmdline()):
                     log.info("Found existing results page server process: %s (PID: %d, Status: %s)",
                              p.name(), p.pid, p.status())
                     return p
@@ -84,7 +86,7 @@ class Runner:
             self.__terminate_process(existing_process)
         log.info("No existing Flask_results_web-page_server running so starting a new one.")
         # Start new server - run from project root so utils module is in path
-        self.results_page_srv_process = subprocess.Popen([sys.executable, "-B", "-m"
+        self.results_page_srv_process = subprocess.Popen([sys.executable, "-B", "-m",
                                                           "show_results_srv.print_results_page_srv"],
                                                           cwd=str(CURRENT_PATH),
                                                           stdout=subprocess.PIPE,
@@ -200,7 +202,11 @@ class Runner:
     # this is how we elegantly terminate a process (at least linux style)
     def __terminate_process(self, process: psutil.Process, timeout=5):
         # TODO check for zombie ???
-        proc_str_msg = f"{process.name()} - {process.cmdline()} (PID: {process.pid})"
+        try:
+            proc_str_msg = f"{process.name()} - {process.cmdline()} (PID: {process.pid})"
+        except psutil.ZombieProcess:
+            log.error(f"Process {process.pid} is a zombie, cannot terminate.")
+            return
         log.info(f"Terminating existing {proc_str_msg}...")
         try:
             process.terminate()

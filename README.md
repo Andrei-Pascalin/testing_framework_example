@@ -41,12 +41,13 @@ test_runner.py
 - [x] Centralized logging system
 - [x] Graceful signal handling and cleanup
 - [x] Generic testing class with runtime measurement
+- [x] SQLAlchemy database integration for FastAPI
+- [x] Separate Flask and html template
+
 ---
 
 ## 📝 Planned Features
 
-- [ ] SQLAlchemy database integration for FastAPI
-- [ ] Separate Flask and html template
 - [ ] Database queries
 
 ---
