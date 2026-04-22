@@ -1,4 +1,8 @@
 import os
+import time
+import requests
+import threading
+from queue import Queue
 from flask import Flask, request, jsonify, render_template
 from utils.my_logger import get_logger
 
@@ -9,6 +13,92 @@ app = Flask(__name__, template_folder=os.path.join(os.path.dirname(__file__), 't
 
 # Store results in memory (can be replaced with database)
 results_store = []
+
+# FastAPI server URL
+FASTAPI_SERVER_URL = "http://localhost:8100"
+
+# Thread-safe queue for pending result fetches
+pending_results_queue = Queue()
+
+# Flag to control background worker thread
+worker_thread_stop_event = threading.Event()
+
+
+def fetch_and_store_result(db_id: int) -> bool:
+    """
+    Fetch a result from FastAPI server and store it locally.
+
+    Args:
+        db_id: Database ID of the result to fetch
+
+    Returns:
+        bool: True if successful, False otherwise
+    """
+    try:
+        fetch_url = f"{FASTAPI_SERVER_URL}/results/{db_id}"
+        log.debug(f"Worker thread: Fetching result from: {fetch_url}")
+
+        response = requests.get(fetch_url, timeout=10)
+        log.debug(f"Worker thread: Received response - Status {response.status_code}")
+
+        if response.status_code == 200:
+            result_data = response.json()
+            log.info(f"Worker thread: Successfully fetched result for db_id {db_id}")
+
+            # Store result in local results_store
+            results_store.append(result_data)
+            return True
+        else:
+            log.error(f"Worker thread: Failed to fetch result - Status {response.status_code}, Response: {response.text}")
+            return False
+
+    except requests.exceptions.Timeout:
+        log.error(f"Worker thread: Timeout while fetching result for db_id {db_id}")
+        return False
+    except requests.exceptions.RequestException as e:
+        log.error(f"Worker thread: Error communicating with FastAPI server: {str(e)}")
+        return False
+    except Exception as e:
+        log.error(f"Worker thread: Unexpected error fetching result: {str(e)}")
+        return False
+
+
+def background_result_worker(check_interval: int = 2):
+    """
+    Background worker thread that periodically checks the queue for pending results
+    and fetches them from the FastAPI server.
+
+    Args:
+        check_interval: Time in seconds between queue checks
+    """
+    log.info(f"Starting background result worker thread (check interval: {check_interval}s)")
+
+    while not worker_thread_stop_event.is_set():
+        try:
+            # Check queue with timeout to allow graceful shutdown
+            db_id = pending_results_queue.get(timeout=1)
+            log.debug(f"Worker thread: Got db_id {db_id} from queue (queue size: {pending_results_queue.qsize()})")
+
+            # Fetch and store the result
+            fetch_and_store_result(db_id)
+
+        except:
+            # Queue timeout - this is expected, just continue
+            pass
+
+    log.info("Background result worker thread stopped")
+
+
+def start_background_worker():
+    """Start the background worker thread."""
+    worker_thread = threading.Thread(
+        target=background_result_worker,
+        daemon=True,
+        name="FlaskResultFetcher"
+    )
+    worker_thread.start()
+    log.info("Background worker thread started")
+    return worker_thread
 
 @app.route('/alive', methods=['GET'])
 def check_alive():
@@ -21,13 +111,9 @@ def check_alive():
 @app.route('/new-result-ping', methods=['POST'])
 def new_result_ping():
     """
-    Endpoint to receive notification of new results.
-    The info received is actually the db_id of the newly stored result in the database.
-    This is called by the FASTAPI server to notify that a new result has been stored in the database.
-    The Flask server will then get the result for the given db_id from the database and update 
-    the results page accordingly.
-    """
-    """
+    Endpoint to receive notification of new results from FastAPI server.
+    Simply enqueues the db_id for the background worker thread to process.
+
     Expected JSON payload:
     {
         "db_id": "int"
@@ -36,13 +122,26 @@ def new_result_ping():
     log.debug("Received new result ping from FASTAPI server.")
     try:
         data = request.get_json()
-        log.debug(f"================>>>> Data received in new_result_ping: {data}")
-        # Here you can implement logic to fetch the latest results from the database if needed
-        # For now, we just acknowledge the ping
+        db_id = data.get("db_id")
+        log.debug(f"Received ping for db_id: {db_id}")
+
+        if not db_id:
+            return jsonify({
+                "error": "Missing db_id in request",
+                "status": "FAILED"
+            }), 400
+
+        # Enqueue the db_id for background processing
+        pending_results_queue.put(db_id)
+        log.info(f"Enqueued db_id {db_id} for result fetching (queue size: {pending_results_queue.qsize()})")
+
         return jsonify({
-            "message": "New result ping received. You can now fetch the latest results from the database.",
-            "status": "SUCCESS"
+            "message": "Result notification received. Queued for processing.",
+            "status": "SUCCESS",
+            "db_id": db_id,
+            "queue_size": pending_results_queue.qsize()
         }), 200
+
     except Exception as e:
         log.error(f"Error processing new result ping: {str(e)}")
         return jsonify({
@@ -171,12 +270,23 @@ def internal_error(error):
 
 if __name__ == '__main__':
     log.info("Starting Flask Results Server on localhost:8200")
-    app.run(
-        host='localhost',
-        port=8200,
-        debug=False,
-        threaded=True
-    )
+
+    # Start background worker thread
+    worker_thread = start_background_worker()
+
+    try:
+        app.run(
+            host='localhost',
+            port=8200,
+            debug=False,
+            threaded=True
+        )
+    finally:
+        # Gracefully shutdown the worker thread
+        log.info("Shutting down background worker thread...")
+        worker_thread_stop_event.set()
+        worker_thread.join(timeout=5)
+        log.info("Flask Results Server stopped")
 
 
 

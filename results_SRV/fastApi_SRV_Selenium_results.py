@@ -2,7 +2,7 @@ import requests
 
 from fastapi import FastAPI, HTTPException, Query
 from pydantic import BaseModel
-from typing import Optional, List, Dict, Any
+# from typing import Optional, List, Dict, Any
 from starlette import status
 from utils.my_logger import get_logger
 from utils.database import DatabaseHandler
@@ -43,7 +43,7 @@ async def receive_result(data: TestResult):
 
     # Forward results to another server on localhost:8200
     try:
-        # replacing the actual sending of results with a notification ping to 
+        # replacing the actual sending of results with a notification ping to
         # instruct Flask server to fetch the latest results from the database
         response = requests.post(FLASK_SERVER_NEW_RESULT_PING_URL, json={"db_id": result_id})
         # response = requests.post(FLASK_SERVER_RESULT_URL,
@@ -70,9 +70,16 @@ async def receive_result(data: TestResult):
 @app.get("/results/{result_id}")
 async def get_result(result_id: int):
     """Retrieve a specific test result by ID."""
+    log.debug(f"===============> Fetching result for ID: {result_id}")
     result = db_handler.get_result_by_id(result_id)
+
+
     if result is None:
         raise HTTPException(status_code=404, detail="Test result not found")
+    # return result
+    # response = requests.post(FLASK_SERVER_RESULT_URL, json=result)
+    # log.debug(f"===============> Forwarded result to Flask server - status: {response.reason}, response: {response.text}")
+    log.debug(f"===============> Got result for ID: {result_id}: {result}")
     return result
 
 
